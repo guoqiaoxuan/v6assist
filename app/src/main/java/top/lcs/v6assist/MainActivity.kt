@@ -317,20 +317,24 @@ class MainActivity : AppCompatActivity() {
         pollJob?.cancel()
         pollJob = lifecycleScope.launch {
             while (isActive) {
-                refreshStatus()
-                sampleStats()
+                // 网络请求必须离开主线程，否则每秒都会卡住 UI（NetworkOnMainThreadException / ANR）
+                val snap = if (V6Service.running) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { BoxStats.snapshot() }
+                } else null
+                refreshStatus(snap)
+                sampleStats(snap)
                 delay(2000)
             }
         }
     }
 
-    private fun sampleStats() {
+    private fun sampleStats(snap: BoxStats.Snap?) {
         if (!V6Service.running) {
             lastTotal = -1L
             lastConn = 0
             return
         }
-        val snap = BoxStats.snapshot() ?: return
+        if (snap == null) return
         if (lastTotal >= 0 && snap.totalBytes > lastTotal) {
             Prefs.addStat(this, snap.totalBytes - lastTotal, snap.v6Ratio)
         }
@@ -339,7 +343,7 @@ class MainActivity : AppCompatActivity() {
         lastConn = snap.active
     }
 
-    private fun refreshStatus() {
+    private fun refreshStatus(snap: BoxStats.Snap? = null) {
         val st = Prefs.readStat(this)
         val running = V6Service.running
 
@@ -361,7 +365,7 @@ class MainActivity : AppCompatActivity() {
         }
         V6Service.lastError?.let { hint("上次错误：$it") }
 
-        val snap = if (running) BoxStats.snapshot() else null
+        val own = if (running) snap else null
         val totalMb = st.total / 1024.0 / 1024.0
         val v6Mb = st.v6 / 1024.0 / 1024.0
         val ratio = if (st.total > 0) st.v6 * 100.0 / st.total else 0.0
@@ -369,8 +373,8 @@ class MainActivity : AppCompatActivity() {
             append("今日经中继：%.1f MB（≈ 省下校园网 v4 计费）\n".format(totalMb))
             append("其中 IPv6：%.1f MB（%.1f%%）\n".format(v6Mb, ratio))
             append("新增连接：${st.conn} 个")
-            if (snap != null) {
-                append(" · 活动 ${snap.active}（v6 ${snap.v6Active}）")
+            if (own != null) {
+                append(" · 活动 ${own.active}（v6 ${own.v6Active}）")
             } else if (running) {
                 val why = BoxStats.lastError
                 append("\n（统计接口未就绪" + (if (why != null) "：$why" else "") + "）")
