@@ -139,7 +139,11 @@ object BoxStats {
                 // 中继侧已强制只走 IPv6，所以计入 v6；否则会把全部视频流量误算成 v4。
                 val fake = ip.startsWith("198.18.") || ip.startsWith("198.19.") ||
                     ip.startsWith("fc") || ip.startsWith("fd")
-                if (ip.contains(':') || fake) {
+                // 域名连接在 sing-box 1.14 的 /connections 里 destinationIP 通常是空串，
+                // 这类连接由中继按域名解析（PC 侧 prefer_ipv6），必须计入 v6 桶，
+                // 否则视频全走 v6 也会显示成 0%。
+                val relay = ip.isEmpty() || fake
+                if (ip.contains(':') || relay) {
                     v6 += bytes
                     v6n++
                 } else {
