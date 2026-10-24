@@ -135,7 +135,11 @@ object BoxStats {
                 val meta = c.optJSONObject("metadata")
                 val ip = meta?.optString("destinationIP") ?: ""
                 val bytes = c.optLong("download") + c.optLong("upload")
-                if (ip.contains(':')) {
+                // fakeip 假地址（198.18.0.0/15、fc00::/18）代表“经中继按域名转发”，
+                // 中继侧已强制只走 IPv6，所以计入 v6；否则会把全部视频流量误算成 v4。
+                val fake = ip.startsWith("198.18.") || ip.startsWith("198.19.") ||
+                    ip.startsWith("fc") || ip.startsWith("fd")
+                if (ip.contains(':') || fake) {
                     v6 += bytes
                     v6n++
                 } else {

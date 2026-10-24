@@ -371,7 +371,7 @@ class MainActivity : AppCompatActivity() {
         val ratio = if (st.total > 0) st.v6 * 100.0 / st.total else 0.0
         statsView.text = buildString {
             append("今日经中继：%.1f MB（≈ 省下校园网 v4 计费）\n".format(totalMb))
-            append("其中 IPv6：%.1f MB（%.1f%%）\n".format(v6Mb, ratio))
+            append("其中 IPv6（含经中继）：%.1f MB（%.1f%%）\n".format(v6Mb, ratio))
             append("新增连接：${st.conn} 个")
             if (own != null) {
                 append(" · 活动 ${own.active}（v6 ${own.v6Active}）")
