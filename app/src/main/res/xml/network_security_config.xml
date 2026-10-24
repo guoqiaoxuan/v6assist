@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 只对回环地址放行明文 HTTP：看板通过 sing-box 的 clash_api(127.0.0.1:9090) 取统计。
+     其他域名依旧禁止明文，保持系统默认安全策略。 -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

@@ -45,6 +45,8 @@ class MainActivity : AppCompatActivity() {
     private var pollJob: Job? = null
     private var lastTotal = -1L
     private var lastConn = 0
+    private var pendingStart = false
+    private var pendingUntil = 0L
 
     private val vpnPermission = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -52,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == Activity.RESULT_OK) {
             doStart()
         } else {
+            pendingStart = false
             switch.isChecked = false
             hint("没有授予 VPN 权限，隧道未开启")
         }
@@ -267,6 +270,8 @@ class MainActivity : AppCompatActivity() {
         saveState()
         val host = Prefs.relayHost(this)
         val port = Prefs.relayPort(this)
+        pendingStart = true
+        pendingUntil = System.currentTimeMillis() + 15000
         switch.isEnabled = false
         hint("正在检测中继 $host:$port …")
         lifecycleScope.launch {
@@ -275,6 +280,7 @@ class MainActivity : AppCompatActivity() {
             }
             switch.isEnabled = true
             if (!ok) {
+                pendingStart = false
                 switch.isChecked = false
                 hint("连不上中继 $host:$port。请确认 PC 已开启中继与热点，且手机在同一网络。")
                 return@launch
@@ -290,12 +296,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun doStart() {
-        hint("")
+        hint("正在启动隧道…")
+        pendingStart = true
+        pendingUntil = System.currentTimeMillis() + 15000
         V6Service.start(this)
-        refreshStatus()
+        switch.postDelayed({ refreshStatus() }, 800)
     }
 
     private fun doStop() {
+        pendingStart = false
         V6Service.stop(this)
         lastTotal = -1L
         lastConn = 0
@@ -332,14 +341,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshStatus() {
         val st = Prefs.readStat(this)
-        switch.isChecked = V6Service.running
         val running = V6Service.running
+
+        if (running) {
+            pendingStart = false
+        } else if (pendingStart && System.currentTimeMillis() > pendingUntil) {
+            pendingStart = false
+            switch.isChecked = false
+            hint(V6Service.lastError?.let { "启动失败：$it" } ?: "启动超时：中继或隧道内核没有就绪。")
+        }
+        if (!pendingStart) switch.isChecked = running
         if (running) {
             val secs = if (V6Service.startedAt > 0) (System.currentTimeMillis() - V6Service.startedAt) / 1000 else 0
             statusView.text = "状态：运行中 · 已运行 ${fmtDuration(secs)}\n" +
                 "中继：${Prefs.relayHost(this)}:${Prefs.relayPort(this)}"
         } else {
-            statusView.text = "状态：已停止（系统完全按默认联网）\n" +
+            statusView.text = "状态：" + (if (pendingStart) "正在启动…" else "已停止（系统完全按默认联网）") + "\n" +
                 "中继：${Prefs.relayHost(this)}:${Prefs.relayPort(this)}"
         }
         V6Service.lastError?.let { hint("上次错误：$it") }
@@ -352,7 +369,11 @@ class MainActivity : AppCompatActivity() {
             append("今日经中继：%.1f MB（≈ 省下校园网 v4 计费）\n".format(totalMb))
             append("其中 IPv6：%.1f MB（%.1f%%）\n".format(v6Mb, ratio))
             append("新增连接：${st.conn} 个")
-            if (snap != null) append(" · 活动 ${snap.active}（v6 ${snap.v6Active}）")
+            if (snap != null) {
+                append(" · 活动 ${snap.active}（v6 ${snap.v6Active}）")
+            } else if (running) {
+                append("\n（统计接口未就绪：内核 clash_api 无响应）")
+            }
         }
     }
 

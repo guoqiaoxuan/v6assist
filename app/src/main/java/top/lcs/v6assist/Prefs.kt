@@ -147,8 +147,8 @@ object BoxStats {
         var conn: HttpURLConnection? = null
         return try {
             conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 800
-                readTimeout = 800
+                connectTimeout = 1500
+                readTimeout = 1500
                 requestMethod = "GET"
             }
             if (conn.responseCode !in 200..299) return null
