@@ -48,21 +48,19 @@ jobs:
         run: |
           git clone --depth 1 --branch v1.14.3 https://github.com/SagerNet/sing-box.git "$RUNNER_TEMP/sing-box"
 
-      - name: Install gomobile
+      - name: Install gomobile (sagernet fork, 与 sing-box 匹配)
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
+          go install github.com/sagernet/gomobile/cmd/gomobile@v0.1.12
+          go install github.com/sagernet/gomobile/cmd/gobind@v0.1.12
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          ls -l "$(go env GOPATH)/bin"
 
-      - name: Build libbox.aar
+      - name: Build libbox.aar (arm64 only)
         working-directory: ${{ runner.temp }}/sing-box
         run: |
           set -x
-          go run ./cmd/internal/build_libbox -target android || {
-            echo "build_libbox failed, falling back to direct gomobile bind"
-            gomobile bind -target android -androidapi 21 \
-              -o libbox.aar ./experimental/libbox
-          }
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          go run ./cmd/internal/build_libbox -target android -platform android/arm64
           ls -l libbox*.aar
 
       - name: Copy libbox.aar into app
