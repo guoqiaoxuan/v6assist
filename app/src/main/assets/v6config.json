@@ -19,8 +19,7 @@
       {
         "tag": "relay-dns",
         "type": "udp",
-        "server": "__RELAY_HOST__",
-        "server_port": __DNS_PORT__,
+        "server": "223.5.5.5",
         "detour": "relay"
       }
     ],
