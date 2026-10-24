@@ -1,0 +1,89 @@
+name: build-apk
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout app
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Show NDK
+        run: |
+          echo "ANDROID_NDK_LATEST_HOME=$ANDROID_NDK_LATEST_HOME"
+          ls "$ANDROID_NDK_LATEST_HOME" | head -20
+
+      - name: Checkout sing-box v1.14.3
+        run: |
+          git clone --depth 1 --branch v1.14.3 https://github.com/SagerNet/sing-box.git "$RUNNER_TEMP/sing-box"
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Build libbox.aar
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+          ANDROID_NDK: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        working-directory: ${{ runner.temp }}/sing-box
+        run: |
+          set -x
+          go run ./cmd/internal/build_libbox -target android || {
+            echo "build_libbox failed, falling back to direct gomobile bind"
+            gomobile bind -target android -androidapi 21 \
+              -o libbox.aar ./experimental/libbox
+          }
+          ls -l libbox*.aar
+
+      - name: Copy libbox.aar into app
+        run: |
+          mkdir -p app/libs
+          cp "$RUNNER_TEMP"/sing-box/libbox.aar app/libs/libbox.aar
+          ls -l app/libs
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: |
+          gradle --no-daemon assembleDebug --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          find . -name "*.apk" -type f -print
+          cp app/build/outputs/apk/debug/*.apk out/v6assist-debug.apk
+          ls -l out
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: v6assist-debug-apk
+          path: out/v6assist-debug.apk
+          if-no-files-found: error
+          retention-days: 14
