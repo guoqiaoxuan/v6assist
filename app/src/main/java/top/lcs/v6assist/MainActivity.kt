@@ -139,12 +139,12 @@ class MainActivity : AppCompatActivity() {
 
         root.addView(sectionTitle("生效的应用"))
         biliBox = CheckBox(this).apply {
-            text = "哔哩哔哩 (tv.danmaku.bili)"
+            text = Pkg.biliLabel(this@MainActivity)
             setTextColor(Color.parseColor("#C7D6E8"))
         }
         root.addView(biliBox)
         douyinBox = CheckBox(this).apply {
-            text = "抖音 (com.ss.android.ugc.aweme)"
+            text = Pkg.douyinLabel(this@MainActivity)
             setTextColor(Color.parseColor("#C7D6E8"))
         }
         root.addView(douyinBox)

@@ -444,8 +444,8 @@ class V6Service : VpnService(), PlatformInterface, CommandServerHandler {
         fun buildConfig(ctx: Context): String {
             val tpl = ctx.assets.open("v6config.json").bufferedReader().use { it.readText() }
             val pkgs = mutableListOf<String>()
-            if (Prefs.includeBili(ctx)) pkgs.add("tv.danmaku.bili")
-            if (Prefs.includeDouyin(ctx)) pkgs.add("com.ss.android.ugc.aweme")
+            if (Prefs.includeBili(ctx)) pkgs.addAll(Pkg.bili(ctx))
+            if (Prefs.includeDouyin(ctx)) pkgs.addAll(Pkg.douyin(ctx))
             if (pkgs.isEmpty()) pkgs.add("tv.danmaku.bili")
             val pkgJson = pkgs.joinToString(",") { "\"$it\"" }
             return tpl
