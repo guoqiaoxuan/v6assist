@@ -4,10 +4,8 @@ import android.content.Context
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.net.URL
 import java.time.LocalDate
 
 /** 轻量持久化：中继地址、生效 App、按日统计。 */
@@ -100,7 +98,13 @@ object Prefs {
 
 /** 从 sing-box 自带 clash_api 取会话统计。 */
 object BoxStats {
-    private const val BASE = "http://127.0.0.1:9090"
+    private const val HOST = "127.0.0.1"
+    private const val PORT = 9090
+
+    /** 最近一次取数失败原因，供界面显示，便于排查。 */
+    @Volatile
+    var lastError: String? = null
+        private set
 
     data class Snap(
         val totalBytes: Long,
@@ -117,7 +121,8 @@ object BoxStats {
     }
 
     fun snapshot(): Snap? = try {
-        val body = httpGet("$BASE/connections") ?: return null
+        val body = httpGet("/connections") ?: return null
+        lastError = null
         val root = JSONObject(body)
         val declared = root.optLong("downloadTotal") + root.optLong("uploadTotal")
         var v6 = 0L
@@ -143,24 +148,73 @@ object BoxStats {
         null
     }
 
-    private fun httpGet(url: String): String? {
-        var conn: HttpURLConnection? = null
+    /**
+     * 裸 Socket 发 HTTP/1.1 请求。系统对明文 HTTP 的拦截只作用于高层 API
+     * （HttpURLConnection/OkHttp），裸 socket 不受 network security config 约束，
+     * 也不会被系统代理设置影响 —— 用它读内核的 clash_api 最稳。
+     */
+    /**
+     * 裸 Socket 发 HTTP/1.1 请求。系统对明文 HTTP 的拦截只作用于高层 API
+     * （HttpURLConnection/OkHttp），裸 socket 不受 network security config 约束，
+     * 也不会被系统代理设置影响 —— 用它读内核的 clash_api 最稳。
+     */
+    private fun httpGet(path: String): String? {
+        var sock: Socket? = null
         return try {
-            conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 1500
-                readTimeout = 1500
-                requestMethod = "GET"
+            sock = Socket()
+            sock.connect(InetSocketAddress(HOST, PORT), 1500)
+            sock.soTimeout = 1500
+            val req = "GET " + path + " HTTP/1.1" + CRLF +
+                "Host: " + HOST + ":" + PORT + CRLF +
+                "Accept: application/json" + CRLF +
+                "Connection: close" + CRLF + CRLF
+            sock.getOutputStream().apply { write(req.toByteArray()); flush() }
+            val ins = sock.getInputStream()
+            val buf = java.io.ByteArrayOutputStream()
+            val tmp = ByteArray(8192)
+            try {
+                while (true) {
+                    val n = ins.read(tmp)
+                    if (n < 0) break
+                    buf.write(tmp, 0, n)
+                }
+            } catch (_: java.net.SocketTimeoutException) {
             }
-            if (conn.responseCode !in 200..299) return null
-            BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+            val text = String(buf.toByteArray(), Charsets.UTF_8)
+            val idx = text.indexOf(CRLF + CRLF)
+            if (idx < 0) throw IllegalStateException("响应无 header 分隔")
+            val head = text.substring(0, idx)
+            val code = head.lineSequence().firstOrNull()?.split(' ')?.getOrNull(1)?.toIntOrNull() ?: 0
+            if (code !in 200..299) throw IllegalStateException("HTTP $code")
+            var body = text.substring(idx + 4)
+            if (head.contains("chunked", true)) body = dechunk(body)
+            body
         } catch (e: Throwable) {
+            lastError = (e.javaClass.simpleName + ": " + (e.message ?: "")).take(120)
             null
         } finally {
-            conn?.disconnect()
+            try { sock?.close() } catch (_: Throwable) {}
         }
     }
-}
 
+    private fun dechunk(raw: String): String {
+        val sb = StringBuilder()
+        var rest = raw
+        while (true) {
+            val nl = rest.indexOf(CRLF)
+            if (nl < 0) break
+            val size = rest.substring(0, nl).trim().toIntOrNull(16) ?: break
+            if (size == 0) break
+            val start = nl + 2
+            val end = minOf(start + size, rest.length)
+            sb.append(rest, start, end)
+            rest = if (end + 2 <= rest.length) rest.substring(end + 2) else ""
+        }
+        return sb.toString()
+    }
+
+    private const val CRLF = "\r\n"
+}
 /** 中继连通性探测（TCP 握手）。 */
 object RelayProbe {
     fun tcpOk(host: String, port: Int, timeoutMs: Int = 600): Boolean = try {

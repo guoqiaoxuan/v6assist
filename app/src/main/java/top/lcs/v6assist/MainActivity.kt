@@ -372,7 +372,8 @@ class MainActivity : AppCompatActivity() {
             if (snap != null) {
                 append(" · 活动 ${snap.active}（v6 ${snap.v6Active}）")
             } else if (running) {
-                append("\n（统计接口未就绪：内核 clash_api 无响应）")
+                val why = BoxStats.lastError
+                append("\n（统计接口未就绪" + (if (why != null) "：$why" else "") + "）")
             }
         }
     }
