@@ -168,16 +168,14 @@ class V6Service : VpnService(), PlatformInterface, CommandServerHandler {
 
     // ---------- CommandServerHandler ----------
 
-    override fun serviceStop(): Boolean {
+    override fun serviceStop() {
         mainHandler.post { shutdown() }
-        return true
     }
 
-    override fun serviceReload(): Boolean {
+    override fun serviceReload() {
         val ctx = applicationContext
-        val server = commandServer ?: return false
+        val server = commandServer ?: return
         server.startOrReloadService(buildConfig(ctx), OverrideOptions())
-        return true
     }
 
     override fun getSystemProxyStatus(): SystemProxyStatus = SystemProxyStatus().also {
@@ -285,8 +283,12 @@ class V6Service : VpnService(), PlatformInterface, CommandServerHandler {
             owner.userName = pkgs?.firstOrNull() ?: ""
             return owner
         }
-        return Libbox.findConnectionOwner(ipProtocol, sourceAddress, sourcePort, destinationAddress, destinationPort)
+        return error("android: connection owner requires API 29+")
     }
+
+    override fun sendNotification(notification: io.nekohasekai.libbox.Notification) = Unit
+
+    override fun cancelNotification(identifier: String, typeID: Int) = Unit
 
     override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener) = Unit
 
