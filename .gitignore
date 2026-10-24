@@ -6,3 +6,6 @@ local.properties
 *.iml
 out/
 app/libs/libbox.aar
+_hosts_toggle.ps1
+_hosts.backup.txt
+_auth.log
