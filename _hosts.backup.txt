@@ -1,0 +1,83 @@
+# Copyright (c) 1993-2009 Microsoft Corp.
+#
+# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
+#
+# This file contains the mappings of IP addresses to host names. Each
+# entry should be kept on an individual line. The IP address should
+# be placed in the first column followed by the corresponding host name.
+# The IP address and the host name should be separated by at least one
+# space.
+#
+# Additionally, comments (such as these) may be inserted on individual
+# lines or following the machine name denoted by a '#' symbol.
+#
+# For example:
+#
+#      102.54.94.97     rhino.acme.com          # source server
+#       38.25.63.10     x.acme.com              # x client host
+# localhost name resolution is handled within DNS itself.
+#	127.0.0.1       localhost
+#	::1             localhost
+127.0.0.1 api.openverse.org 
+
+# cn-bj-fx 主 CDN 的 IPv6 是 2404:4d00（移动段），CERNET 过去 100% 丢包
+# 屏蔽后浏览器回落到 upos-* 备用线路，实测 IPv6 6.8 MB/s
+# 回滚：删掉本段四行 + ipconfig /flushdns
+
+# 规则：A 记录一律指向 127.0.0.1（IPv4 死），AAAA 指向真实可用的 v6 节点
+# 没有 v6 的节点直接全封，逼播放器去选有 v6 的线路
+
+# 主 CDN：v6 走 2404:4d00 移动段，从 CERNET 不可达 → 全封
+
+# 可用 v6 节点（实测 TCP 通）
+
+# 只有 IPv4、没有 AAAA 的节点 → 全封，让播放器跳过
+
+# === B站 IPv6 Only BEGIN (2026-10-23) ===
+# 规则：A 记录一律指向 127.0.0.1（IPv4 死），AAAA 指向真实可用的 v6 节点
+# 没有 v6 的节点直接全封，逼播放器去选有 v6 的线路
+
+# 主 CDN：v6 走 2404:4d00 移动段，从 CERNET 不可达 → 全封
+127.0.0.1 cn-bj-fx-01-01.bilivideo.com
+::1 cn-bj-fx-01-01.bilivideo.com
+127.0.0.1 cn-bj-fx-01-02.bilivideo.com
+::1 cn-bj-fx-01-02.bilivideo.com
+
+# 可用 v6 节点（实测 TCP 通）
+127.0.0.1 upos-sz-mirrorcos.bilivideo.com
+2408:8706:11:201:37::16 upos-sz-mirrorcos.bilivideo.com
+127.0.0.1 upos-sz-mirrorcoso1.bilivideo.com
+2408:8706:11:201:37::16 upos-sz-mirrorcoso1.bilivideo.com
+127.0.0.1 upos-sz-estgoss.bilivideo.com
+2408:8742:c381:800::1df upos-sz-estgoss.bilivideo.com
+127.0.0.1 upos-sz-mirrorhw.bilivideo.com
+2408:877e:30:9::33 upos-sz-mirrorhw.bilivideo.com
+127.0.0.1 upos-sz-mirrorali.bilivideo.com
+2408:8710:1020:4180:3::18 upos-sz-mirrorali.bilivideo.com
+127.0.0.1 upos-hz-mirrorakam.akamaized.net
+2600:1417:8400:4::173c:60a7 upos-hz-mirrorakam.akamaized.net
+
+# 只有 IPv4、没有 AAAA 的节点 → 全封，让播放器跳过
+127.0.0.1 upos-sz-mirrorbos.bilivideo.com
+::1 upos-sz-mirrorbos.bilivideo.com
+127.0.0.1 upos-sz-mirroraliov.bilivideo.com
+::1 upos-sz-mirroraliov.bilivideo.com
+
+# === B站 IPv6 Only END ===
+
+# >>> CampusIPv6Assistant BEGIN 2026-10-23 21:04
+# 本段由「校园 IPv6 助手」管理（会话 20261023-210433），停止优化会自动移除
+# 规则：A 记录指向 127.0.0.1（不吃 IPv4），AAAA 指向本机实测可达的 IPv6 节点
+127.0.0.1 upos-sz-mirrorcos.bilivideo.com
+2408:8740:41fc:111::a9 upos-sz-mirrorcos.bilivideo.com   # 30 ms
+127.0.0.1 upos-sz-mirrorcoso1.bilivideo.com
+2408:8719:2000:68:68::2c upos-sz-mirrorcoso1.bilivideo.com   # 58 ms
+127.0.0.1 upos-sz-estgoss.bilivideo.com
+2408:8706:3:800::329 upos-sz-estgoss.bilivideo.com   # 12 ms
+127.0.0.1 upos-sz-mirrorhw.bilivideo.com
+2408:877e:30:9::33 upos-sz-mirrorhw.bilivideo.com   # 36 ms
+127.0.0.1 upos-sz-mirrorali.bilivideo.com
+2408:8710:1020:4180:3::18 upos-sz-mirrorali.bilivideo.com   # 49 ms
+127.0.0.1 upos-hz-mirrorakam.akamaized.net
+2600:140e:3:e::1720:5b05 upos-hz-mirrorakam.akamaized.net   # 93 ms
+# <<< CampusIPv6Assistant END

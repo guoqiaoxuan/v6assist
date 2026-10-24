@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">V6 助手</string>
+    <string name="notif_channel_state">隧道状态</string>
+    <string name="notif_channel_alert">提示</string>
+</resources>

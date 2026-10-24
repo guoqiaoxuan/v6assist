@@ -1,0 +1,135 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090"
+    }
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "fakeip",
+        "type": "fakeip",
+        "inet4_range": "198.18.0.0/15",
+        "inet6_range": "fc00::/18"
+      },
+      {
+        "tag": "relay-dns",
+        "type": "udp",
+        "server": "__RELAY_HOST__",
+        "server_port": __DNS_PORT__,
+        "detour": "relay"
+      }
+    ],
+    "rules": [
+      {
+        "query_type": [
+          "A",
+          "AAAA"
+        ],
+        "server": "fakeip"
+      }
+    ],
+    "final": "relay-dns",
+    "strategy": "prefer_ipv6"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.19.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "mtu": 1380,
+      "auto_route": true,
+      "strict_route": false,
+      "stack": "gvisor",
+      "include_package": __INCLUDE_PACKAGES__
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "socks",
+      "tag": "relay",
+      "server": "__RELAY_HOST__",
+      "server_port": __RELAY_PORT__,
+      "version": "5",
+      "udp_over_tcp": false
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "default_domain_resolver": {
+      "server": "relay-dns"
+    },
+    "rules": [
+      {
+        "port": 53,
+        "action": "hijack-dns"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "action": "sniff"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "100::/64"
+        ],
+        "action": "reject"
+      },
+      {
+        "ip_cidr": [
+          "2404:4d00::/32"
+        ],
+        "action": "reject"
+      },
+      {
+        "domain_suffix": [
+          ".douyincdn.com",
+          ".douyinpic.com",
+          ".ecombdapi.com",
+          ".ecombdimg.com",
+          ".volccdn.com",
+          ".bytegecko.com",
+          ".miaozhen.com",
+          ".bdurl.net",
+          ".dbankcloud.cn",
+          ".hicloud.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "domain": [
+          "data.bilibili.com",
+          "mall.bilibili.com",
+          "broadcast.chat.bilibili.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "network": [
+          "udp"
+        ],
+        "port": [
+          443
+        ],
+        "action": "reject"
+      }
+    ],
+    "final": "relay"
+  }
+}
